@@ -432,8 +432,12 @@ async function downloadCli(version, githubToken, cliRepo = 'game-ci/cli') {
         throw new Error(`Failed to fetch install.sh for game-ci CLI ${resolvedVersion}: ` +
             `GitHub returned ${scriptResponse.status} for ${installScriptUrl}.`);
     }
+    let scriptText = await scriptResponse.text();
+    // The install.sh script usually hardcodes CLI_REPO="game-ci/cli". We replace it 
+    // with the dynamically provided cliRepo to ensure it downloads from the fork.
+    scriptText = scriptText.replace(/CLI_REPO="[^"]+"/, `CLI_REPO="${cliRepo}"`);
     const scriptPath = path.join(os.tmpdir(), `game-ci-install-${resolvedVersion.replace(/[^\w.-]/g, '_')}.sh`);
-    await fs.writeFile(scriptPath, await scriptResponse.text(), { mode: 0o755 });
+    await fs.writeFile(scriptPath, scriptText, { mode: 0o755 });
     let stdout = '';
     await exec.exec('bash', [scriptPath, resolvedVersion, destDir], {
         listeners: {
