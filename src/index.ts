@@ -23,7 +23,8 @@ export async function run() {
     // download-cli.ts's resolveLatestTag for why this has to be threaded
     // through rather than left to a GITHUB_TOKEN env var.
     const githubToken = core.getInput('githubToken') || '';
-    const cliPath = await downloadCli(cliVersion, githubToken);
+    const cliRepo = core.getInput('cliRepo') || 'game-ci/cli';
+    const cliPath = await downloadCli(cliVersion, githubToken, cliRepo);
 
     const projectPath = resolveProjectPath({
       input: core.getInput('projectPath'),

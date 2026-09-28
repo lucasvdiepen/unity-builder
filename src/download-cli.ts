@@ -5,8 +5,6 @@ import * as cache from '@actions/cache';
 import * as core from '@actions/core';
 import * as exec from '@actions/exec';
 
-const CLI_REPO = 'game-ci/cli';
-
 /** The binary's name once extracted - matches release-cli.yml's per-platform `binary` matrix value. */
 export function binaryNameFor(platform: NodeJS.Platform): string {
   return platform === 'win32' ? 'game-ci.exe' : 'game-ci';
@@ -29,6 +27,7 @@ export function binaryNameFor(platform: NodeJS.Platform): string {
 export async function resolveLatestTag(
   fetchFn: typeof fetch = fetch,
   githubToken?: string,
+  cliRepo: string = 'game-ci/cli',
 ): Promise<string> {
   const headers: Record<string, string> = { Accept: 'application/vnd.github+json' };
   // Actions runners share IPs across many concurrent jobs from unrelated
@@ -53,7 +52,7 @@ export async function resolveLatestTag(
   const token = githubToken || process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetchFn(`https://api.github.com/repos/${CLI_REPO}/releases/latest`, {
+  const response = await fetchFn(`https://api.github.com/repos/${cliRepo}/releases/latest`, {
     headers,
   });
 
@@ -142,9 +141,13 @@ async function saveToCache(version: string): Promise<void> {
  *
  * @param version A release tag (e.g. "v0.1.0"), or "latest".
  */
-export async function downloadCli(version: string, githubToken?: string): Promise<string> {
+export async function downloadCli(
+  version: string,
+  githubToken?: string,
+  cliRepo: string = 'game-ci/cli',
+): Promise<string> {
   const resolvedVersion =
-    version === 'latest' ? await resolveLatestTag(fetch, githubToken) : version;
+    version === 'latest' ? await resolveLatestTag(fetch, githubToken, cliRepo) : version;
 
   const cached = await restoreFromCache(resolvedVersion);
   if (cached) return cached;
@@ -152,7 +155,7 @@ export async function downloadCli(version: string, githubToken?: string): Promis
   const destDir = cacheDirFor(resolvedVersion);
   await fs.mkdir(destDir, { recursive: true });
 
-  const installScriptUrl = `https://raw.githubusercontent.com/${CLI_REPO}/${resolvedVersion}/scripts/install.sh`;
+  const installScriptUrl = `https://raw.githubusercontent.com/${cliRepo}/${resolvedVersion}/scripts/install.sh`;
   core.info(`Installing game-ci CLI ${resolvedVersion} via ${installScriptUrl}`);
 
   // Fetched and written to a file, then run as `bash <path> <args...>`,
